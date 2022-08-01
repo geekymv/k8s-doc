@@ -28,9 +28,9 @@
   编辑三台机器的`/etc/hosts`文件，添加下面内容
 
   ```shell
-  192.168.56.201 node101
-  192.168.56.202 node102
-  192.168.56.203 node103
+  192.168.56.101 node101
+  192.168.56.102 node102
+  192.168.56.103 node103
   ```
 
 - 时间同步
@@ -53,9 +53,7 @@
 
 
 
-
-
-操作完以上步骤，重启系统。
+**操作完以上步骤，重启系统。**
 
 
 
@@ -70,6 +68,7 @@ kubeadm init \
 --service-cidr=10.96.0.0/16 \
 --pod-network-cidr=192.110.0.0/16
 
+# apiserver-advertise-address 是 master 节点的ip
 # service 网络范围 10.96.0.0/16
 # pod 网络范围 192.110.0.0/16
 ```
@@ -107,9 +106,24 @@ kubeadm join cluster-endpoint:6443 --token wvntod.h10mx2jgawjr76gv \
 
 
 
+安装网络插件，只在 master 节点操作 
+
 ```shell
 curl https://docs.projectcalico.org/archive/v3.21/manifests/calico.yaml -O
 ```
+
+
+
+在node102、node103 上分别执行（根据自己的实际参数执行）
+
+```shell
+kubeadm join cluster-endpoint:6443 --token wvntod.h10mx2jgawjr76gv \
+    --discovery-token-ca-cert-hash sha256:6e2ba8fd9c8f8eeffd5b84bb878e87ad3763df6d3b30994db796e9dc9edb466d 
+```
+
+
+
+
 
 
 
@@ -215,97 +229,6 @@ ingress-nginx
 ```
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-```shell
-# 创建集群
-kubeadm init \
-	--apiserver-advertise-address=192.168.56.201 \
-	--image-repository registry.aliyuncs.com/google_containers \
-	--kubernetes-version=v1.17.4 \
-	--service-cidr=10.96.0.0/12 \
-	--pod-network-cidr=10.244.0.0/16
-```
-
-注意：apiserver-advertise-address 是 master 节点的ip
-
-
-
-```text
-Your Kubernetes control-plane has initialized successfully!
-
-To start using your cluster, you need to run the following as a regular user:
-
-  mkdir -p $HOME/.kube
-  sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
-  sudo chown $(id -u):$(id -g) $HOME/.kube/config
-
-You should now deploy a pod network to the cluster.
-Run "kubectl apply -f [podnetwork].yaml" with one of the options listed at:
-  https://kubernetes.io/docs/concepts/cluster-administration/addons/
-
-Then you can join any number of worker nodes by running the following on each as root:
-
-kubeadm join 192.168.56.201:6443 --token xy3gng.5yxil16iymzcunom \
-    --discovery-token-ca-cert-hash sha256:c134ea141bed517d90ac0b38b8682ee7081edd234af1d299a6d05453848cb4e1
-
-```
-
-
-
-
-
-安装网络插件，只在 master 节点操作 
-
-```shell
-https://github.com/flannel-io/flannel/tree/master/Documentation/kube-flannel.yml
-```
-
-将 kube-flannel.yml 文件下载下来，放到master 节点上，然后执行下面命令
-
-```shell
-kubectl apply -f kube-flannel.yml
-```
-
-
-
-在node202、node203 上分别执行（根据自己的实际参数执行）
-
-```shell
-kubeadm join 192.168.56.201:6443 --token o8rqe7.2u5xa365rsjdh6v6 \
-    --discovery-token-ca-cert-hash sha256:0bdfee67dac5e5f72a215bacc10e605e4c8f098360025bc44bc9c4ddbacf7532 
-```
-
-
-
-集群安装完毕
-
-```shell
-[root@node201 ~]# kubectl get nodes
-NAME      STATUS   ROLES    AGE     VERSION
-node201   Ready    master   4h16m   v1.17.4
-node202   Ready    <none>   5m20s   v1.17.4
-node203   Ready    <none>   5m24s   v1.17.4
-```
-
-
-
-```shell
-kubectl get pods -o wide
-
-journalctl -f -u kubelet.service 
-```
 
 
 
