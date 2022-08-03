@@ -153,6 +153,70 @@ thisisunsafe 回车
 
 
 
+#### Namespace
+
+```shell
+# 查看所有 namespace
+kubectl get namespace
+kubectl get ns
+
+# 创建 namespace
+kubectl create ns dev
+
+# 查看 namespace 详细信息
+kubectl describe ns default
+
+# 删除
+kubectl delete ns dev
+```
+
+
+
+
+
+```yml
+# vi ns-dev.yaml
+
+apiVersion: v1
+kind: Namespace
+metadata:
+ name: dev
+```
+
+
+
+```shell
+kubectl create -f ns-dev.yaml
+
+kubectl delete -f ns-dev.yaml
+```
+
+
+
+
+
+#### Pod
+
+```shell
+kubectl get pod -n dev
+
+kubectl run nginx --image=nginx:1.17.1 --port=80 --namespace dev
+
+# kubectl run pod名称
+# --image= 指定pod镜像
+# --port 指定端口
+# --namespace 指定namespace
+
+kubectl get pod -n dev
+
+kubectl get pod -o wide -n dev
+
+kubectl describe pod nginx -n dev
+
+kubectl delete pod nginx
+
+```
+
 
 
 #### deployment 无状态应用部署
