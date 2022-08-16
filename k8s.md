@@ -112,6 +112,8 @@ kubeadm join cluster-endpoint:6443 --token wvntod.h10mx2jgawjr76gv \
 curl https://docs.projectcalico.org/archive/v3.21/manifests/calico.yaml -O
 ```
 
+因为我在注意修改 `calico.yaml` 内的
+
 
 
 在node102、node103 上分别执行（根据自己的实际参数执行）
@@ -172,8 +174,6 @@ kubectl delete ns dev
 
 
 
-
-
 ```yml
 # vi ns-dev.yaml
 
@@ -187,11 +187,10 @@ metadata:
 
 ```shell
 kubectl create -f ns-dev.yaml
-
 kubectl delete -f ns-dev.yaml
+
+kubectl apply -f ns-dev.yaml
 ```
-
-
 
 
 
@@ -219,32 +218,100 @@ kubectl delete pod nginx
 
 
 
+### Label
+
+pod-nginx.yaml
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+ name: nginx
+ namespace: dev
+spec:
+ containers:
+ - image: nginx:1.17.1
+   name: pod
+   ports:
+   - name: nginx-port
+     containerPort: 80
+     protocol: TCP
+```
+
+```shell
+# 创建 pod
+kubectl apply -f pod-nginx.yaml
+```
+
+```shell
+# 添加标签
+kubectl label pod nginx version=1.0 -n dev
+
+# 查看标签
+kubectl get pod -n dev --show-labels
+
+# 更新标签
+kubectl label pod nginx version=2.0 --overwrite -n dev
+
+# 筛选标签
+kubectl get pod -n dev -l version=1.0 --show-labels
+
+# 删除标签
+kubectl label pod nginx version- -n dev
+
+```
+
+配置方式打标签
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+ name: nginx
+ namespace: dev
+ labels:
+  version: "3.0"
+  env: "dev"
+spec:
+ containers:
+ - image: nginx:1.17.1
+   name: pod
+   ports:
+   - name: nginx-port
+     containerPort: 80
+     protocol: TCP
+```
+
+
+
 #### deployment 无状态应用部署
 
 ```shell
-kubectl run mynginx --image=nginx
+kubectl run mynginx --image=nginx --namespace=dev
 
 # 通过 deployment 创建，控制 pod 行为
-kubectl create deployment mytomcat --image=tomcat:8.5.68
+kubectl create deployment mytomcat --image=tomcat:8.5.68 --namespace=dev
 ```
 
 
 
 ```shell
-kubectl get pod
+kubectl get pod -n dev
 
-kubectl get deploy
+kubectl get deploy -n dev
 
-kubectl delete pod mynginx
+kubectl delete pod mynginx -n dev
 # 删除 deployment 会自动删除pod
-kubectl delete deploy mytomcat
+kubectl delete deploy mytomcat -n dev
 
 ```
 
 - 多副本
 
 ```shell
-kubectl create deployment mynginx --image=nginx --replicas=3
+kubectl create deployment mynginx --image=nginx --replicas=3 -n=dev
+
+kubectl describe deploy mynginx -n dev
 ```
 
 
@@ -273,6 +340,14 @@ kubectl scale --replicas=5 deployment/mynginx
 - ClusterIP 集群内部访问
 
 ```shell
+# 暴露 Service，Service 是通过 selector Deployment 的 label 进行关联的
+kubectl expose deploy mynginx --name=svc-mynginx --type=ClusterIP --port=80 --target-port=80 -n dev
+
+# 查看 Service
+kubectl get svc -n dev -o wide
+NAME          TYPE        CLUSTER-IP     EXTERNAL-IP   PORT(S)   AGE   SELECTOR
+svc-mynginx   ClusterIP   10.96.74.128   <none>        80/TCP    19s   app=mynginx
+
 # 查看 pod 标签
 kubectl get pod --show-labels
 
@@ -283,6 +358,45 @@ kubectl get svc
 ```
 
 - NodePort 集群外部也可以访问
+
+```shell
+kubectl expose deploy mynginx --name=svc-mynginx2 --type=NodePort --port=80 --target-port=80 -n dev
+
+# 查看
+kubectl get svc svc-mynginx2  -n dev -o wide
+NAME           TYPE       CLUSTER-IP    EXTERNAL-IP   PORT(S)        AGE   SELECTOR
+svc-mynginx2   NodePort   10.96.4.121   <none>        80:32185/TCP   49s   app=mynginx
+
+http://192.168.56.101:32185
+
+# 删除svc
+kubectl delete svc svc-mynginx2 -n dev
+
+
+```
+
+
+
+svc-nginx.yaml
+
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+ name: svc-nginx
+ namespace: dev
+spec:
+ clusterIP: 10.96.4.100
+ ports:
+ - port: 80
+   protocol: TCP
+   targetPort: 80
+ selector:
+  app: mynginx
+ type: ClusterIP 
+```
+
+
 
 
 
