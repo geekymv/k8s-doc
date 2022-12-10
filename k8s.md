@@ -8,6 +8,10 @@
   | node01   | node102 | 192.168.56.102 | docker，kubectl，kubeadm，kubelet |
   | node02   | node103 | 192.168.56.103 | docker，kubectl，kubeadm，kubelet |
 
+  机器要求至少2G内存
+
+  
+
 - 查看操作系统版本
 
   ```shell
@@ -51,15 +55,177 @@
   systemctl disable iptables
   ```
 
+- 禁用selinux
 
+  ```shell
+  # selinux是linux系统下的一个安全服务，如果不关闭它，在安装集群中会产生各种各样的奇葩问题
+  # 编辑 /etc/selinux/config 文件，修改SELINUX的值为disable
+  # 注意修改完毕之后需要重启linux服务
+  vi /etc/selinux/config
+  SELINUX=disabled
+  ```
+
+  ```shell
+  # 或执行下面命令
+  sudo setenforce 0
+  sudo sed -i 's/^SELINUX=enforcing$/SELINUX=disabled/' /etc/selinux/config
+  ```
+
+- 禁用swap 分区
+
+  ```shell
+  # swap分区指的是虚拟内存分区，它的作用是物理内存使用完，之后将磁盘空间虚拟成内存来使用，启用swap设备会对系统的性能产生非常负面的影响，因此kubernetes要求每个节点都要禁用swap设备，但是如果因为某些原因确实不能关闭swap分区，就需要在集群安装过程中通过明确的参数进行配置说明
+  
+  # 编辑分区配置文件/etc/fstab，注释掉swap分区一行
+  # 注意修改完毕之后需要重启linux服务
+  vi /etc/fstab
+  注释掉 /dev/mapper/centos-swap swap
+  # /dev/mapper/centos-swap swap
+  ```
+
+  ```shell
+  # 或执行下面命令
+  swapoff -a  
+  sed -ri 's/.*swap.*/#&/' /etc/fstab
+  ```
+
+- 修改Linux内核参数
+
+  ```shell
+  # 修改linux的内核采纳数，添加网桥过滤和地址转发功能
+  # 编辑/etc/sysctl.d/kubernetes.conf文件，添加如下配置：
+  net.bridge.bridge-nf-call-ip6tables = 1
+  net.bridge.bridge-nf-call-iptables = 1
+  net.ipv4.ip_forward = 1
+  
+  # 重新加载配置
+  sysctl -p
+  # 加载网桥过滤模块
+  modprobe br_netfilter
+  # 查看网桥过滤模块是否加载成功
+  lsmod | grep br_netfilter
+  ```
 
 **操作完以上步骤，重启系统。**
 
-
-
-集群初始化
+安装docker
 
 ```shell
+# 1.移除以前docker相关包
+sudo yum remove docker \
+                  docker-client \
+                  docker-client-latest \
+                  docker-common \
+                  docker-latest \
+                  docker-latest-logrotate \
+                  docker-logrotate \
+                  docker-engine
+                  
+# 2.配置yum源
+sudo yum install -y yum-utils
+sudo yum-config-manager \
+--add-repo \
+http://mirrors.aliyun.com/docker-ce/linux/centos/docker-ce.repo
+
+# 3.安装docker
+# yum install -y docker-ce docker-ce-cli containerd.io
+#以下是在安装k8s的时候使用（指定docker版本）
+yum install -y docker-ce-20.10.7 docker-ce-cli-20.10.7  containerd.io-1.4.6
+
+# 4.启动docker
+systemctl enable docker --now
+
+# 5.配置加速
+这里额外添加了docker的生产环境核心配置cgroup
+registry-mirrors 可以配置成自己的
+
+sudo mkdir -p /etc/docker
+sudo tee /etc/docker/daemon.json <<-'EOF'
+{
+  "registry-mirrors": ["https://82m9ar63.mirror.aliyuncs.com"],
+  "exec-opts": ["native.cgroupdriver=systemd"],
+  "log-driver": "json-file",
+  "log-opts": {
+    "max-size": "100m"
+  },
+  "storage-driver": "overlay2"
+}
+EOF
+sudo systemctl daemon-reload
+sudo systemctl restart docker
+
+查看镜像地址
+docker info 
+自己配置的镜像地址
+Registry Mirrors:
+  https://82m9ar63.mirror.aliyuncs.com/
+
+
+```
+
+安装docker
+
+https://www.yuque.com/leifengyang/oncloud/mbvigg
+
+安装k8s
+
+https://www.yuque.com/leifengyang/oncloud/ghnb83
+
+根据上面文档配置基础环境、先安装docker
+
+### 安装k8s
+
+#### 安装kubelet、kubeadm、kubectl
+
+```shell
+# 1.安装kubelet、kubeadm、kubectl
+cat <<EOF | sudo tee /etc/yum.repos.d/kubernetes.repo
+[kubernetes]
+name=Kubernetes
+baseurl=http://mirrors.aliyun.com/kubernetes/yum/repos/kubernetes-el7-x86_64
+enabled=1
+gpgcheck=0
+repo_gpgcheck=0
+gpgkey=http://mirrors.aliyun.com/kubernetes/yum/doc/yum-key.gpg
+   http://mirrors.aliyun.com/kubernetes/yum/doc/rpm-package-key.gpg
+exclude=kubelet kubeadm kubectl
+EOF
+
+# 安装
+sudo yum install -y kubelet-1.20.9 kubeadm-1.20.9 kubectl-1.20.9 --disableexcludes=kubernetes
+# 启动 kubelet
+sudo systemctl enable --now kubelet
+
+# 2.使用kubeadm引导集群
+# 2.1 下载各个机器需要的镜像
+sudo tee ./images.sh <<-'EOF'
+#!/bin/bash
+images=(
+kube-apiserver:v1.20.9
+kube-proxy:v1.20.9
+kube-controller-manager:v1.20.9
+kube-scheduler:v1.20.9
+coredns:1.7.0
+etcd:3.4.13-0
+pause:3.2
+)
+for imageName in ${images[@]} ; do
+docker pull registry.cn-hangzhou.aliyuncs.com/lfy_k8s_images/$imageName
+done
+EOF
+   
+chmod +x ./images.sh && ./images.sh
+# 2.2 初始化主节点
+#所有机器添加master域名映射，以下需要修改为自己的
+echo "192.168.56.101  cluster-endpoint" >> /etc/hosts
+```
+
+
+
+#### 集群初始化
+
+```shell
+# 只在 master 执行
 kubeadm init \
 --apiserver-advertise-address=192.168.56.101 \
 --control-plane-endpoint=cluster-endpoint \
@@ -71,9 +237,13 @@ kubeadm init \
 # apiserver-advertise-address 是 master 节点的ip
 # service 网络范围 10.96.0.0/16
 # pod 网络范围 192.110.0.0/16
+# --pod-network-cidr 默认值是 192.168.0.0/16
+
+#所有网络范围不重叠
 ```
 
 ```shell
+# 执行 kubeadm init 命令后，可以看到一下提示
 Your Kubernetes control-plane has initialized successfully!
 
 To start using your cluster, you need to run the following as a regular user:
@@ -104,28 +274,76 @@ kubeadm join cluster-endpoint:6443 --token wvntod.h10mx2jgawjr76gv \
 
 ```
 
-
-
-安装网络插件，只在 master 节点操作 
+根据上面提示
 
 ```shell
-curl https://docs.projectcalico.org/archive/v3.21/manifests/calico.yaml -O
-```
+# 1.先执行下面命令
+mkdir -p $HOME/.kube
+sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+sudo chown $(id -u):$(id -g) $HOME/.kube/config
 
-因为我在注意修改 `calico.yaml` 内的
-
-
-
-在node102、node103 上分别执行（根据自己的实际参数执行）
-
-```shell
+# 加入新的 master 节点（此处不执行）
+kubeadm join cluster-endpoint:6443 --token wvntod.h10mx2jgawjr76gv \
+    --discovery-token-ca-cert-hash sha256:6e2ba8fd9c8f8eeffd5b84bb878e87ad3763df6d3b30994db796e9dc9edb466d \
+    --control-plane 
+    
+# 需要加入新的 worker 节点，在其他机器上执行（此处不执行）
 kubeadm join cluster-endpoint:6443 --token wvntod.h10mx2jgawjr76gv \
     --discovery-token-ca-cert-hash sha256:6e2ba8fd9c8f8eeffd5b84bb878e87ad3763df6d3b30994db796e9dc9edb466d 
 ```
 
 
 
+#### 安装网络插件，只在 master 节点操作 
 
+```shell
+curl https://docs.projectcalico.org/archive/v3.21/manifests/calico.yaml -O
+```
+
+因为我在执行`kubeadm init`修改 `pod-network-cidr`的默认值， 这里需要修改 `calico.yaml` 内的配置
+
+```shell
+# 打开下载的 calico.yaml 文件，修改value和上面 pod-network-cidr 的值保持一致
+- name: CALICO_IPV4POOL_CIDR
+  value: "192.110.0.0/16"
+```
+
+```shell
+# 修改完后执行
+kubectl apply -f calico.yaml
+```
+
+
+
+#### 加入 worker 节点
+
+在node102、node103 上分别执行（根据自己的实际参数执行），加入 worker 节点
+
+```shell
+kubeadm join cluster-endpoint:6443 --token wvntod.h10mx2jgawjr76gv \
+    --discovery-token-ca-cert-hash sha256:6e2ba8fd9c8f8eeffd5b84bb878e87ad3763df6d3b30994db796e9dc9edb466d 
+```
+
+> 获取新令牌
+>
+> kubeadm token create --print-join-command
+
+#### 验证集群节点状态
+
+```shell
+kubectl get nodes
+```
+
+等一会就可以看到所有节点都是 Ready 状态
+
+```shell
+[root@node101 ~]# kubectl get nodes
+NAME      STATUS   ROLES                  AGE     VERSION
+node101   Ready    control-plane,master   131d    v1.20.9
+node102   Ready    <none>                 131d    v1.20.9
+node103   Ready    <none>                 2m42s   v1.20.9
+
+```
 
 
 
