@@ -355,6 +355,10 @@ watch -n 1 kubectl get pod -A
 kubectl get pod -w
 ```
 
+
+
+#### 安装 dashboard （可选）
+
 令牌
 
 ```text
@@ -373,6 +377,8 @@ thisisunsafe 回车
 
 
 
+### k8s核心
+
 #### Namespace
 
 ```shell
@@ -381,6 +387,7 @@ kubectl get namespace
 kubectl get ns
 
 # 创建 namespace
+kubectl create namespace dev
 kubectl create ns dev
 
 # 查看 namespace 详细信息
@@ -394,11 +401,21 @@ kubectl delete ns dev
 
 ```yml
 # vi ns-dev.yaml
-
 apiVersion: v1
 kind: Namespace
 metadata:
  name: dev
+ 
+---
+apiVersion: v1
+kind: Pod
+metadata:
+ name: mynginx
+ namespace: dev
+spec:
+ containers:
+ - name: nginx-container
+   image:  nginx:1.17.1
 ```
 
 
@@ -408,6 +425,25 @@ kubectl create -f ns-dev.yaml
 kubectl delete -f ns-dev.yaml
 
 kubectl apply -f ns-dev.yaml
+```
+
+
+
+```shell
+
+
+
+
+```
+
+
+
+
+
+查看帮助
+
+```shell
+kubectl help
 ```
 
 
@@ -424,11 +460,23 @@ kubectl run nginx --image=nginx:1.17.1 --port=80 --namespace dev
 # --port 指定端口
 # --namespace 指定namespace
 
+# 查看pod
 kubectl get pod -n dev
 
+# 查看某个pod
+kubectl get pod pod_name -n dev
+
+# 查看pod的详细信息
 kubectl get pod -o wide -n dev
 
-kubectl describe pod nginx -n dev
+# 查看pod 以yaml形式展示结果
+kubectl get pod pod_name -o yaml -n dev
+
+# 查看pod 以json形式展示结果
+kubectl get pod pod_name -o json -n dev
+
+# 查看pod描述信息
+kubectl describe pod pod_name -n dev
 
 kubectl delete pod nginx
 
@@ -502,22 +550,34 @@ spec:
 
 
 
+### Pod控制器
+
+pod 控制器用于pod的管理，确保pod资源符合预期的状态，当pod资源出现故障时，会尝试进行重启或重建pod。
+
 #### deployment 无状态应用部署
 
 ```shell
+# 直接运行一个pod
 kubectl run mynginx --image=nginx --namespace=dev
+# --namespace 简写成 -n
 
 # 通过 deployment 创建，控制 pod 行为
-kubectl create deployment mytomcat --image=tomcat:8.5.68 --namespace=dev
+kubectl create deployment mynginx --image=nginx:1.17.1 -n=dev
 ```
 
 
 
 ```shell
-kubectl get pod -n dev
+# 查看 pod
+kubectl get pod -n dev --show-labels
+# 可以看到 mynginx-xxx 的 pod 包含 app=mynginx 标签
 
-kubectl get deploy -n dev
+# 查看 deployment
+kubectl get deploy -n dev -o wide
+# 可以看到 mynginx 的 deployment 的选择器是 app=mynginx
+# deployment 和 pod 是通过 label 关联的
 
+# 删除 pod
 kubectl delete pod mynginx -n dev
 # 删除 deployment 会自动删除pod
 kubectl delete deploy mytomcat -n dev
@@ -542,7 +602,7 @@ kubectl get pod -o wide
 - 扩缩容
 
 ```shell
-kubectl scale --replicas=5 deployment/mynginx
+kubectl scale --replicas=5 deployment/mynginx -n dev
 ```
 
 - 自愈和故障转移，自动
@@ -613,8 +673,6 @@ spec:
   app: mynginx
  type: ClusterIP 
 ```
-
-
 
 
 
