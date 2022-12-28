@@ -438,12 +438,14 @@ kubectl apply -f ns-dev.yaml
 
 
 
-
-
 查看帮助
 
 ```shell
 kubectl help
+
+kubectl explain pod
+kubectl explain pod.spec
+kubectl explain pod.spec.containers
 ```
 
 
@@ -550,6 +552,55 @@ spec:
 
 
 
+#### 端口设置
+
+```yaml
+# vi pod-ports.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+ name: pod-ports
+ namespace: dev
+spec:
+ containers:
+ - name: nginx
+   image: nginx:1.17.1
+   ports:
+   - name: nginx-port
+     containerPort: 80
+     protocol: TCP
+```
+
+访问容器内的程序需要使用podIP:containerPort
+
+#### 资源配额
+
+```yaml
+# vi pod-resources.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+ name: pod-resources
+ namespace: dev
+spec:
+ containers:
+ - name: nginx
+   image: nginx:1.17.1
+   resources:
+    limits: # 限制资源上限
+     cpu: "2" # CPU限制，单位时core数
+     memory: "1Gi" # 内存限制
+    requests: # 请求资源下限
+     cpu: "1"
+     memory: "10Mi"
+```
+
+CPU：core数，可以是整数或小数
+
+Memory：内存大小，可以使用Gi、Mi、G、M等形式
+
+
+
 ### Pod控制器
 
 pod 控制器用于pod的管理，确保pod资源符合预期的状态，当pod资源出现故障时，会尝试进行重启或重建pod。
@@ -576,6 +627,9 @@ kubectl get pod -n dev --show-labels
 kubectl get deploy -n dev -o wide
 # 可以看到 mynginx 的 deployment 的选择器是 app=mynginx
 # deployment 和 pod 是通过 label 关联的
+
+# 以 yaml 形式查看 deployment
+kubectl get deploy mynginx -n dev -o yaml
 
 # 删除 pod
 kubectl delete pod mynginx -n dev
