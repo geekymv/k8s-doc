@@ -1,3 +1,12 @@
+#### Docker hub
+
+```shell
+https://hub.docker.com/
+
+```
+
+
+
 #### Dockerfile 指令
 
 ```shell
@@ -176,11 +185,68 @@ cd dockerfiles
 
 - 
 
-  
+- 
 
-  
+### Docker compose
+https://docs.docker.com/compose/
+```shell
+# CentOS 安装 https://docs.docker.com/compose/install/linux/#install-using-the-repository
+sudo yum update
+sudo yum install docker-compose-plugin
 
-  
+# 查看版本
+docker compose version
+```
 
-  
+
+
+#### 安装GitLab
+
+```shell
+安装文档
+https://docs.gitlab.com/ee/install/docker.html#install-gitlab-using-docker-compose
+
+mkdir -p /usr/local/docker/gitlab_docker
+cd /usr/local/docker/gitlab_docker
+
+# 创建 docker-compose.yml
+vi docker-compose.yml
+
+version: '3.6'
+services:
+  web:
+    image: 'gitlab/gitlab-ee:latest'
+    container_name: gitlab
+    restart: always
+    environment:
+      GITLAB_OMNIBUS_CONFIG: |
+        external_url 'http://192.168.56.101:8929'
+        gitlab_rails['gitlab_shell_ssh_port'] = 2224
+    ports:
+      - '8929:8929'
+      - '2224:22'
+    volumes:
+      - '$GITLAB_HOME/config:/etc/gitlab'
+      - '$GITLAB_HOME/logs:/var/log/gitlab'
+      - '$GITLAB_HOME/data:/var/opt/gitlab'
+    shm_size: '256m'
+
+
+# 启动
+export GITLAB_HOME=/usr/local/docker/gitlab_docker
+
+docker compose up -d
+
+查看密码
+sudo docker exec -it gitlab grep 'Password:' /etc/gitlab/initial_root_password
+
+```
+
+
+
+#### VirtualBox 扩容 /dev/mapper/centos-root
+
+https://blog.0xzhang.com/posts/VirtualBox%E8%99%9A%E6%8B%9F%E6%9C%BACentOS7%E7%A3%81%E7%9B%98%E6%89%A9%E5%AE%B9.html
+
+
 
