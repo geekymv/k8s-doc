@@ -617,8 +617,35 @@ kubectl run mynginx --image=nginx --namespace=dev
 # 通过 deployment 创建，控制 pod 行为
 kubectl create deployment mynginx --image=nginx:1.17.1 -n=dev
 ```
+通过yaml创建deployment
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+ name: mynginx
+ namespace: dev
+ labels:
+  app: mynginx
+spec:
+ replicas: 3
+ selector:
+  matchLabels:
+   app: mynginx
+ template:
+  metadata:
+   labels:
+    app: mynginx
+  spec:
+   containers:
+   - image: nginx:1.17.1
+     imagePullPolicy: IfNotPresent
+     name: nginx
+```
 
-
+```shell
+# 查看RS(ReplicaSet) 和 Pod 信息
+kubectl get rs,pod -n dev
+```
 
 ```shell
 # 查看 pod
@@ -665,8 +692,70 @@ kubectl scale --replicas=5 deployment/mynginx -n dev
 
   
 
-- 滚动更新（不停机维护）、版本回退
+- 滚动更新（不停机维护）
+```shell
+kubectl edit deploy mynginx -n dev
+# 修改镜像版本
 
+# 查看Deployment 更新过程
+kubectl rollout status deploy mynginx -n dev
+
+# 可以发现之前的rs还存在，只是副本数为0
+kubectl get rs,pod -n dev
+NAME                                 DESIRED   CURRENT   READY   AGE
+replicaset.apps/mynginx-6cb95bd59d   0         0         0       20m
+replicaset.apps/mynginx-75b7cc87bc   3         3         3       5m35s
+
+NAME                           READY   STATUS    RESTARTS      AGE
+pod/mynginx-75b7cc87bc-f2z65   1/1     Running   0             43s
+pod/mynginx-75b7cc87bc-gq2kl   1/1     Running   0             45s
+pod/mynginx-75b7cc87bc-r88b2   1/1     Running   0             5m35s
+
+```
+- 版本回退
+```shell
+# 查看deployment 部署的历史记录（在创建deployment时使用--record参数，就可以在CHANGE-CAUSE列看到每个版本使用的命令了）
+#
+kubectl rollout history deploy mynginx -n dev
+deployment.apps/mynginx 
+REVISION  CHANGE-CAUSE
+1         kubectl apply --filename=nginx-deployment.yaml --record=true
+2         kubectl apply --filename=nginx-deployment.yaml --record=true
+
+# 查看特定版本的详细信息
+kubectl rollout history deploy mynginx --revision=2  -n dev
+deployment.apps/mynginx with revision #2
+Pod Template:
+  Labels:	app=mynginx
+	pod-template-hash=75b7cc87bc
+  Annotations:	kubernetes.io/change-cause: kubectl apply --filename=nginx-deployment.yaml --record=true
+  Containers:
+   nginx:
+    Image:	nginx:1.17.2
+    Port:	<none>
+    Host Port:	<none>
+    Environment:	<none>
+    Mounts:	<none>
+  Volumes:	<none>
+
+
+
+get deploy -n dev -owide
+NAME      READY   UP-TO-DATE   AVAILABLE   AGE     CONTAINERS   IMAGES         SELECTOR
+mynginx   3/3     3            3           7m15s   nginx        nginx:1.17.2   app=mynginx
+
+# 回滚到上一个版本
+kubectl rollout undo deploy mynginx
+
+kubectl get deploy -n dev -owide          
+NAME      READY   UP-TO-DATE   AVAILABLE   AGE     CONTAINERS   IMAGES         SELECTOR
+mynginx   3/3     2            3           7m34s   nginx        nginx:1.17.1   app=mynginx
+
+# 此时nginx镜像版本已经回退到了nginx:1.17.1
+
+# 使用 --to-revision 回退到指定版本
+kubectl rollout history deploy mynginx --to-revision=2  -n dev 
+```
 
 
 #### Service：Pod 的服务发现和负载均衡
