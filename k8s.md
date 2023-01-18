@@ -685,7 +685,11 @@ kubectl get pod -o wide
 - 扩缩容
 
 ```shell
-kubectl scale --replicas=5 deployment/mynginx -n dev
+# 手动通过kubectl scale 命令
+kubectl scale --replicas=5 deploy mynginx -n dev
+
+# 自动扩缩容 HPA
+
 ```
 
 - 自愈和故障转移，自动
