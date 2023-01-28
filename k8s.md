@@ -763,7 +763,7 @@ kubectl rollout history deploy mynginx --to-revision=2  -n dev
 
 
 #### Service：Pod 的服务发现和负载均衡
-服务注册、服务发现、服务负载均衡
+服务注册、服务发现、服务负载均衡，kube-proxy 管理 k8s 中的 Service 组件，
 
 ```shell
 kubectl expose deploy mynginx -n dev
@@ -954,4 +954,35 @@ ls /config
 #### Configure a Pod to Use a ConfigMap
 
 https://kubernetes.io/docs/tasks/configure-pod-container/configure-pod-configmap/
+
+
+#### RBAC
+Role 属于namespace范围
+ClusterRole 集群范围
+
+角色绑定或集群角色绑定用来把一个角色绑定到目标主体（User、Group、Service Account）上
+RoleBinding 用于某个命名空间中的授权
+ClusterRoleBinding 用于集群范围内的授权
+
+
+#### Service Account
+Service Account 也是一种帐号，是给Pod里面进程使用，命名空间级别隔离的。
+
+#### Storage Class
+
+
+#### PV 和 PVC
+PV 是对可用存储资源的抽象，
+PVC 是用户对存储资源的申请，PVC消耗PV资源，Pod使用PVC。
+
+Pod 在使用PVC时必须与PVC处于同一命名空间。
+
+Storage Class 标记存储资源的特性和性能
+
+资源供应
+- 静态模式
+- 动态模式，通过 Storage Class 系统自动生成PV并绑定PVC。
+
+
+
 
