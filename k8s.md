@@ -833,10 +833,25 @@ spec:
 ```
 
 #### Headless Service
-
+kube-proxy 不会为其创建负载转发规则，
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+ name: headless-svc-nginx
+ namespace: dev
+spec:
+ clusterIP: None
+ ports:
+ - port: 80
+   protocol: TCP
+   targetPort: 80
+ selector:
+  app: mynginx
+```
 
 #### Ingress：Service 的统一网关入口
-
+Ingress 只能以HTTP和HTTPS提供服务，目前 Ingress Controller 的实现有 Nginx、HAProxy、Kong、Istio 等。
 ```shell
 ingress-nginx
 ```
