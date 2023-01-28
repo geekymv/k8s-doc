@@ -763,6 +763,11 @@ kubectl rollout history deploy mynginx --to-revision=2  -n dev
 
 
 #### Service：Pod 的服务发现和负载均衡
+服务注册、服务发现、服务负载均衡
+
+```shell
+kubectl expose deploy mynginx -n dev
+```
 
 - ClusterIP 集群内部访问
 
@@ -781,10 +786,14 @@ kubectl get pod --show-labels
 
 kubectl get svc
 
-服务名.名称空间.svc:port 应用内部访问
+# DNS域名格式的Service
+<servicename>.<namespace>.svc.<clusterdomain>:port 应用内部访问
+clusterdomain 为Kubernetes集群设置的域名后缀（例如cluster.local）
+
+nslookup svc-mynginx.dev.svc.cluster.local
 ```
 
-- NodePort 集群外部也可以访问
+- NodePort 集群外部也可以访问，将Service的端口号映射到每个Node的一个端口号上，这样集群中的任意Node都可以作为Service的入口访问地址。
 
 ```shell
 kubectl expose deploy mynginx --name=svc-mynginx2 --type=NodePort --port=80 --target-port=80 -n dev
@@ -823,6 +832,7 @@ spec:
  type: ClusterIP 
 ```
 
+#### Headless Service
 
 
 #### Ingress：Service 的统一网关入口
