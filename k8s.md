@@ -358,8 +358,40 @@ kubectl get pod -w
 
 
 #### 安装 dashboard （可选）
+https://github.com/kubernetes/dashboard
 
-令牌
+创建用户
+https://github.com/kubernetes/dashboard/blob/master/docs/user/access-control/creating-sample-user.md
+```shell
+vi dashboard-adminuser.yaml
+
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: admin-user
+  namespace: kubernetes-dashboard
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: admin-user
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+- kind: ServiceAccount
+  name: admin-user
+  namespace: kubernetes-dashboard  
+```
+kubectl apply -f dashboard-adminuser.yaml
+
+
+获取令牌
+```shell
+#获取访问令牌
+kubectl -n kubernetes-dashboard get secret $(kubectl -n kubernetes-dashboard get sa/admin-user -o jsonpath="{.secrets[0].name}") -o go-template="{{.data.token | base64decode}}"
+```
 
 ```text
 eyJhbGciOiJSUzI1NiIsImtpZCI6Im5BR0lyWklSQnlJbHExV2FIaVZtR0p1MnJaMjZUelo0eW5vS3I3d1VDMDAifQ.eyJpc3MiOiJrdWJlcm5ldGVzL3NlcnZpY2VhY2NvdW50Iiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9uYW1lc3BhY2UiOiJrdWJlcm5ldGVzLWRhc2hib2FyZCIsImt1YmVybmV0ZXMuaW8vc2VydmljZWFjY291bnQvc2VjcmV0Lm5hbWUiOiJhZG1pbi11c2VyLXRva2VuLXFjcXJkIiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9zZXJ2aWNlLWFjY291bnQubmFtZSI6ImFkbWluLXVzZXIiLCJrdWJlcm5ldGVzLmlvL3NlcnZpY2VhY2NvdW50L3NlcnZpY2UtYWNjb3VudC51aWQiOiI5ZDBjNDBmNC1iMWY2LTRlOTAtYTI4YS1iZjRmZGQxMDViYzAiLCJzdWIiOiJzeXN0ZW06c2VydmljZWFjY291bnQ6a3ViZXJuZXRlcy1kYXNoYm9hcmQ6YWRtaW4tdXNlciJ9.OzwIlibvEEqxfSN7EFAwVivJbzN_-WHLSaDJCCNU1JxWjYKbkBDiPW86riKN4N7MlNfPWxuMTEvMdVZzXfW5HI1lHeUcWIPhsb-TdPOC_ep2YK_kuCkgEwNR9vSYeSYGAfobr0DPpO9vXWBkVnwOvSB9zAWuv0A67L2Z8Ixf0LsPASXnwHLs-qov6jhBjLd-1zqLzYLLHCle8BM-j1wZsW4VvirsjdfNtTHTHexB5UDim7tNEK0VWNV7Wt1_Yii-eUiUP2fRLwqpmREYo54Wy3PPYQdusaCu0ZgOlOZ3Fdfl6lSq3WMmSqHDCbEwyR-ZcUYMrUoVs8oqJrKN8eruyw
