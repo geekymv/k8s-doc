@@ -362,8 +362,8 @@ https://github.com/kubernetes/dashboard
 
 创建用户
 https://github.com/kubernetes/dashboard/blob/master/docs/user/access-control/creating-sample-user.md
-```shell
-vi dashboard-adminuser.yaml
+```yaml
+# vi dashboard-adminuser.yaml
 
 apiVersion: v1
 kind: ServiceAccount
