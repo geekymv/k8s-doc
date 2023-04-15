@@ -411,6 +411,14 @@ thisisunsafe 回车
 
 ### k8s核心
 
+#### Node
+```shell
+kubectl get node <node-name> -o yaml
+```
+Taints 避免 Pod 调度到特地的 Node 上
+Toleraions: 允许 Pod 调度到有特定 taints 的 Node 上
+
+
 #### Namespace
 
 ```shell
@@ -501,6 +509,7 @@ kubectl get pod -n dev
 
 # 查看某个pod
 kubectl get pod pod_name -n dev
+kubectl get pod/pod_name -n dev
 
 # 查看pod的详细信息
 kubectl get pod -o wide -n dev
@@ -607,6 +616,43 @@ spec:
 
 访问容器内的程序需要使用podIP:containerPort
 
+#### 亲和、反亲和
+nodeSelector: 将 Pod 调度到特定到 Node 节点上
+nodeAffinity: 亲和，nodeSelector 的升级版
+podAffinity: 亲和，让某些 Pod 分布在同一组 Node 上
+podAntiAffinity 反亲和，避免某些 Pod 分布在同一组 Node 上
+硬性、软性
+
+#### 手动调度Pod（不经过调度器）
+创建 Pod 时直接指定 nodeName 的值
+```shell
+kubectl explain pod.spec.nodeName
+```
+```yaml
+# vi pod-nodename.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+ name: pod-nodename
+ namespace: dev
+spec:
+ containers:
+ - name: nginx
+   image: nginx:1.17.1
+   ports:
+   - name: nginx-nodename
+     containerPort: 80
+     protocol: TCP
+ nodeName: node103
+```
+
+#### Pod 调度失败的原因
+```shell
+kubectl get pod pod_name -o wide
+kubectl describe pod pod_name
+```
+
+
 #### 资源配额
 
 ```yaml
@@ -673,6 +719,7 @@ spec:
      imagePullPolicy: IfNotPresent
      name: nginx
 ```
+matchLabels 用于关联 Pod,
 
 ```shell
 # 查看RS(ReplicaSet) 和 Pod 信息
@@ -888,6 +935,11 @@ Ingress 只能以HTTP和HTTPS提供服务，目前 Ingress Controller 的实现�
 ingress-nginx
 ```
 
+#### DaemonSet 每个节点来一份
+每个 Node 上部署一个相同的 Pod, 通常用来部署集群中的 agent, 如网络插件
+```shell
+kubectl get ds -n kube-system 
+```
 
 
 #### ConfigMap
