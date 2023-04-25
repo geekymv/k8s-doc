@@ -1,10 +1,16 @@
 #### Docker hub
 
-```shell
 https://hub.docker.com/
+```shell
+交互式方式运行
+docker run --name tomcat1 -it -p 8081:8080 tomcat:8.5.49
+
+ctrl + p + q 从交互式中出来
+
+守护进程方式运行
+dokcer run --name tomcat2 -d -p 8082:8080 tomcat:8.5.49
 
 ```
-
 
 
 #### Dockerfile 指令
