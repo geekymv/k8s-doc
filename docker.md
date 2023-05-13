@@ -37,6 +37,33 @@ COPY 复制文件到容器
 WORKDIR 设置容器的工作目录
 USER 容器使用的用户
 ```
+将C语言编写的程序构建镜像
+hello-world 的 Dockerfile https://hub.docker.com/_/hello-world
+https://github.com/docker-library/hello-world/blob/3fb6ebca4163bf5b9cc496ac3e8f11cb1e754aee/amd64/hello-world/Dockerfile
+
+yum install -y gcc gcc-c++ glibc-static
+
+```c
+#include<stdio.h>
+void main()
+{
+  printf("hello\n");
+}
+```
+gcc --static -o hello hello.c
+
+vi Dockerfile
+```shell
+FROM scratch
+COPY hello /
+CMD ["/hello"]
+```
+docker build -t hello:v0.1 .
+
+docker run --name hello1 hello:v0.1
+
+
+
 
 注意：
 
