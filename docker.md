@@ -1,4 +1,4 @@
-#### Docker hub
+### Docker hub
 
 https://hub.docker.com/
 ```shell
@@ -13,6 +13,9 @@ dokcer run --name tomcat2 -d -p 8082:8080 tomcat:8.5.49
 查看帮助
 docker run --help
 
+查看镜像分层
+docker history 
+
 管理docker命令
 docker system --help
 
@@ -21,23 +24,30 @@ docker system df
 ```
 
 
-#### Dockerfile 指令
+### Dockerfile 指令
 
 ```shell
 FROM 继承基础镜像
-MAINTAINER 镜像制作者信息
-RUN 用来执行shell命令
-EXPOSE 暴露端口号
+MAINTAINER #镜像制作者信息，一般是姓名和邮箱，该指令官方已不建议使用，而是使用LABEL代替
+LABEL # <key>=<value> <key>=<value> ... 通过 docker inspect 可以查看 LABEL 和 MAINTAINER 信息
+ENV <key> <value># 配置环境变量，这些环境变量可以被RUN指令使用，容器运行起来之后，也可以在容器中获取这些环境变量
+ENV <key1>=<value1> <key2>=<value2> # 多个环境变量
+WORKDIR # 设置容器的工作目录，容器打开后默认进入的目录，
+RUN <command> # 用来执行shell命令，docker build 执行过程中，会使用 shell 运行指定的 command
+RUN ["EXECUTABLE","PARAM1","PARAM2"] # docker build 执行过程中，会调用第一个参数指定的应用程序运行，并使用后面的参数作为应用程序的运行参数
 CMD 启动容器默认执行的命令
+CMD <command> shell 命令
+CMD ["EXECUTABLE","PARAM1","PARAM2"] 
+
+EXPOSE 暴露端口号
 ENTRYPOINT 启动容器真正执行的命令
 VOLUME 创建挂载点
-ENV 配置环境变量
 ADD 复制文件到容器
 COPY 复制文件到容器
-WORKDIR 设置容器的工作目录
 USER 容器使用的用户
 ```
-将C语言编写的程序构建镜像
+
+#### 将C语言编写的程序构建镜像
 hello-world 的 Dockerfile https://hub.docker.com/_/hello-world
 https://github.com/docker-library/hello-world/blob/3fb6ebca4163bf5b9cc496ac3e8f11cb1e754aee/amd64/hello-world/Dockerfile
 
@@ -62,6 +72,28 @@ docker build -t hello:v0.1 .
 
 docker run --name hello1 hello:v0.1
 
+#### 在CentOS7的基础上构建自己的镜像
+docker run --name mycentos -it centos:7
+
+mkdir centos7
+cd centos7
+vi Dockerfile
+```shell
+FROM centos:7
+LABEL \
+    auther:"geekymv" \
+    email:"ym2011678@foxmail.com" \
+    version="1.0" \
+    description="this is a custom centos7 image"
+ENV WORK_HOME=/opt/app
+RUN mkdir -p "${WORK_HOME}"    
+WORKDIR ${WORK_HOME}
+
+RUN yum install -y wget vim net-tools
+
+CMD ["/bin/bash"]
+```
+docker build -t mycentos:1.0 .
 
 
 
