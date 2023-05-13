@@ -10,6 +10,14 @@ ctrl + p + q 从交互式中出来
 守护进程方式运行
 dokcer run --name tomcat2 -d -p 8082:8080 tomcat:8.5.49
 
+查看帮助
+docker run --help
+
+管理docker命令
+docker system --help
+
+查看docker磁盘使用情况
+docker system df 
 ```
 
 
