@@ -25,27 +25,38 @@ docker system df
 
 
 ### Dockerfile 指令
-
+https://docs.docker.com/engine/reference/builder/
 ```shell
 FROM 继承基础镜像
 MAINTAINER #镜像制作者信息，一般是姓名和邮箱，该指令官方已不建议使用，而是使用LABEL代替
 LABEL # <key>=<value> <key>=<value> ... 通过 docker inspect 可以查看 LABEL 和 MAINTAINER 信息
 ENV <key> <value># 配置环境变量，这些环境变量可以被RUN指令使用，容器运行起来之后，也可以在容器中获取这些环境变量
 ENV <key1>=<value1> <key2>=<value2> # 多个环境变量
+
+ADD 复制文件到容器
+COPY 复制文件到容器
+
 WORKDIR # 设置容器的工作目录，容器打开后默认进入的目录，
+
 RUN <command> # 用来执行shell命令，docker build 执行过程中，会使用 shell 运行指定的 command
 RUN ["EXECUTABLE","PARAM1","PARAM2"] # docker build 执行过程中，会调用第一个参数指定的应用程序运行，并使用后面的参数作为应用程序的运行参数
+
 CMD 启动容器默认执行的命令
 CMD <command> shell 命令
 CMD ["EXECUTABLE","PARAM1","PARAM2"] 
 
-EXPOSE 暴露端口号
 ENTRYPOINT 启动容器真正执行的命令
+
+EXPOSE # 指定容器准备对外暴露端口号，但该端口号并不会对外真正的暴露，只有在执行 docker run 命令时使用 -p 来指定要真正暴露的端口号
+
 VOLUME 创建挂载点
-ADD 复制文件到容器
-COPY 复制文件到容器
+
 USER 容器使用的用户
 ```
+
+注意：
+- CMD 和 ENTRYPOINT 同时存在时，CMD 是作为 ENTRYPOINT 的参数
+- ADD 复制文件会解压，COPY不会解压
 
 #### 将C语言编写的程序构建镜像
 hello-world 的 Dockerfile https://hub.docker.com/_/hello-world
@@ -96,18 +107,7 @@ CMD ["/bin/bash"]
 docker build -t mycentos:1.0 .
 
 
-
-注意：
-
-- CMD 和 ENTRYPOINT 同时存在时，CMD 是作为 ENTRYPOINT 的参数
-
-- ADD 复制文件会解压，COPY不会解压
-
-  
-
 /var/lib/doker
-
-
 
 ### 制作Dockerfile
 
@@ -128,29 +128,21 @@ cd dockerfiles
   ```
 
   - 制作镜像
-
     docker build -t mycentos:7 .
-
     或
-
     docker build -t mycentos:7 -f Dockerfile .
 
   - 运行镜像（--rm运行完后删除）
-
     docker run -it --rm mycentos:7
-
     docker run -it --rm mycentos:7 bash （覆盖CMD）
 
     cd /opt/geekymv
 
   - 查看镜像
-
     docker images
 
 - 验证CMD 和 ENTRYPOINT 同时存在时，CMD 是作为 ENTRYPOINT 的参数
-
   vi Dockerfile2
-
   ```shell
   FROM centos:7
   LABEL maintainer="my centos"
@@ -158,43 +150,29 @@ cd dockerfiles
   ENTRYPOINT ["echo"]
   CMD ["hi"]
   ```
-
   docker build -t epcentos:7 -f Dockerfile2 .
-
   运行容器
-
   docker run -it --rm epcentos:7
-
   指定参数
-
   docker run -it --rm epcentos:7 hello
 
 - ENV
-
   vi Dockerfile3
-
   ```shell
   FROM centos:7
   LABEL maintainer="my centos"
   LABEL test=dockerfile
   ENV k1 v1
   ENV k2 v2
-  
   CMD echo "${k1} ${k2}"
   ```
-
   docker build -t envcentos:7 -f Dockerfile3 .
-
   运行容器
-
   docker run -it --rm envcentos:7
 
 - ADD 和 COPY
-
   tar -cvf hello.tar.gz hello.txt
-
   vi Dockerfile4
-
   ```shell
   FROM centos:7
   LABEL maintainer="my centos"
@@ -204,38 +182,25 @@ cd dockerfiles
   ```
 
   docker build -t accentos:7 -f Dockerfile4 .
-
   运行容器
-
   docker run -it --rm accentos:7 bash
-
   ls /opt/geekymv
-
 - WORKDIR
-
   vi Dockerfile5
-
   ```shell
   FROM centos:7
   LABEL maintainer="my centos"
   LABEL test=dockerfile
-  
   RUN mkdir /opt/geekymv
-  
   WORKDIR /opt/geekymv
   CMD pwd
   ```
-
   docker build -t wdcentos:7 -f Dockerfile5 .
-
   运行容器
-
   docker run -it --rm wdcentos:7
 
 - USER
-
   vi Dockerfile6
-
   ```shell
   FROM centos:7
   LABEL maintainer="my centos"
@@ -245,15 +210,10 @@ cd dockerfiles
   USER geekymv
   WORKDIR /usr/local/bin/geekymv
   ```
-
   docker build -t usercentos:7 -f Dockerfile6 .
-
   运行容器
-
   docker run -it --rm  usercentos:7
-
   pwd
-
 - 
 
 - 
