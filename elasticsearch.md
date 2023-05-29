@@ -290,8 +290,55 @@ books     0     r      STARTED    0   208b 172.20.0.4 es03
 ```
 可以看到 `books` 索引的 Replica Shard 的状态已经是是 STARTED 。
 
+#### ES 红绿灯系统
+- 红：部分 Shard 还未被分配到节点（未就绪），启动状态
+- 黄：Shards 已经分配和就绪，但 Replica 还未被分配到节点（未就绪）
+- 绿：所有 Shards 和 Replicas 就绪
 
+### ES 集群节点角色和职责
+- Master: 集群管理
+- Data: 文档索引/存储/查询
+- Ingest: 通过 pipeline 转换数据
+- Coordination: 转发请求到对应节点
 
+查看节点状态
+```shell
+GET /_cat/nodes?v
+结果如下
+ip         heap.percent ram.percent cpu load_1m load_5m load_15m node.role master name
+172.20.0.3           31          98  26    1.24    2.06     1.48 dimr      -      es01
+172.20.0.2           20          98  26    1.24    2.06     1.48 dimr      -      es02
+172.20.0.4           18          98  26    1.24    2.06     1.48 dimr      *      es03
+```
+node.role: dimr
+- d: data
+- i: ingest
+- m: master
+- r: remote cluster client
 
+master: `*` 表示主Master
+
+#### Master 节点（候选）
+- 有且只有一个Master候选节点会被选为主Master
+- 管理任务，创建/删除索引，跟踪节点，Shard/Replica 分配等
+- 可能需要独立Master节点集群（大集群）
+- 配置 node.roles: [master]
+
+#### Data 节点
+- 执行文档的CRUD操作，Shard/Replica 所在节点，耗内存和磁盘IO的节点
+- 小集群，通常节点都赋予Data节点角色
+- 大集群，Data和Master集群分离
+- 配置 node.roles: [data]
+
+#### Ingest 
+- 执行数据预处理 pipeline, 转换数据或者添加额外信息，例如处理Word/PDF文档，IP地址到地理位置解析
+- 功能类似Logstash
+- 大集群推荐独立 Ingest 节点
+- 配置 node.roles: [ingest]
+
+#### Coordination
+- 转发请求到对应节点，并返回结果，类似负载均衡/路由器，也称 client 节点
+- 大集群推荐独立 Coordination 节点
+- 配置 默认角色，独立 node.roles: []
 
 视频资料 https://www.bilibili.com/video/BV1FL411D7Xp
