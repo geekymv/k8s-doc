@@ -37,8 +37,8 @@ services:
 volumes:
   es-data-es01: {}
 ```
-启动 es 和 kibana
-docker compose up
+- 创建并启动 es 和 kibana `docker compose up -d`
+- 停止 `docker compose down`
 
 - 访问 es http://192.168.56.101:9200
 - 访问 kibana http://192.168.56.101:5601
@@ -153,10 +153,142 @@ books     0     r      UNASSIGNED
 可以看到 `books` 索引的 Replica Shard 的状态是 UNASSIGNED，因为目前集群只有一个节点。
 
 
+### 使用 Docker 搭建3节点 ES 集群
+- vi docker-es-cluster.yml
+```shell
+version: "3.7"
+services:
+  es01:
+    image: "docker.elastic.co/elasticsearch/elasticsearch-oss:7.10.2"
+    container_name: es01
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    environment:
+      node.name: es01
+      discovery.seed_hosts: es01,es02,es03
+      cluster.initial_master_nodes: es01,es02,es03
+      cluster.name: mycluster
+      ES_JAVA_OPTS: -Xms512m -Xmx512m
+    volumes:
+      - "es-data-es01:/usr/share/elasticsearch/data"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+  es02:
+    image: "docker.elastic.co/elasticsearch/elasticsearch-oss:7.10.2"
+    container_name: es02
+    ports:
+      - "9201:9200"
+      - "9301:9300"
+    environment:
+      node.name: es02
+      discovery.seed_hosts: es01,es02,es03
+      cluster.initial_master_nodes: es01,es02,es03
+      cluster.name: mycluster
+      ES_JAVA_OPTS: -Xms512m -Xmx512m
+    volumes:
+      - "es-data-es02:/usr/share/elasticsearch/data"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+  es03:
+    image: "docker.elastic.co/elasticsearch/elasticsearch-oss:7.10.2"
+    container_name: es03
+    ports:
+      - "9202:9200"
+      - "9302:9300"
+    environment:
+      node.name: es03
+      discovery.seed_hosts: es01,es02,es03
+      cluster.initial_master_nodes: es01,es02,es03
+      cluster.name: mycluster
+      ES_JAVA_OPTS: -Xms512m -Xmx512m
+    volumes:
+      - "es-data-es03:/usr/share/elasticsearch/data"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+  kibana:
+    image: docker.elastic.co/kibana/kibana-oss:7.10.2
+    container_name: kibana
+    depends_on:
+      - es01
+      - es02
+      - es03
+    ports:
+      - "5601:5601"
+      - "9600:9600"
+    environment:
+      SERVERNAME: kibana
+      ELASTICSEARCH_HOSTS: '["http://es01:9200","http://es02:9200","http://es03:9200"]'
+      ES_JAVA_OPTS: -Xmx512m -Xms512m
+volumes:
+  es-data-es01: {}
+  es-data-es02: {}
+  es-data-es03: {}
+```
+启动集群 `docker compose -f docker-es-cluster.yml up`
+> 启动过程可能会遇到  max virtual memory areas vm.max_map_count [65530] is too low, increase to at least [262144] 错误
+> 可以执行 sysctl -w vm.max_map_count=262144 ，
+> 如果想要持久化修改，编辑 /etc/sysctl.conf 文件，添加配置 vm.max_map_count=262144
+> 参考文档 https://www.elastic.co/guide/en/elasticsearch/reference/current/docker.html#docker-cli-run-prod-mode
 
+查看 es 集群健康状态
+```shell
+GET /_cluster/health
+结果如下
+{
+  "cluster_name" : "mycluster",
+  "status" : "green",
+  "timed_out" : false,
+  "number_of_nodes" : 3,
+  "number_of_data_nodes" : 3,
+  "active_primary_shards" : 2,
+  "active_shards" : 4,
+  "relocating_shards" : 0,
+  "initializing_shards" : 0,
+  "unassigned_shards" : 0,
+  "delayed_unassigned_shards" : 0,
+  "number_of_pending_tasks" : 0,
+  "number_of_in_flight_fetch" : 0,
+  "task_max_waiting_in_queue_millis" : 0,
+  "active_shards_percent_as_number" : 100.0
+}
+```
 
+查看节点状态
+```shell
+GET /_cat/nodes?v
+结果如下
+ip         heap.percent ram.percent cpu load_1m load_5m load_15m node.role master name
+172.20.0.3           31          98  26    1.24    2.06     1.48 dimr      -      es01
+172.20.0.2           20          98  26    1.24    2.06     1.48 dimr      -      es02
+172.20.0.4           18          98  26    1.24    2.06     1.48 dimr      *      es03
+```
 
-
+查看索引情况
+```shell
+GET /_cat/indices?v
+结果如下
+health status index     uuid                   pri rep docs.count docs.deleted store.size pri.store.size
+green  open   books     4bq7A8R8SU27Zg2p1OMnjg   1   1          0            0       416b           208b
+green  open   .kibana_1 5U-mzZQUSsCNT6SNjhSdnQ   1   1         18            2     89.9kb         41.6kb
+```
+查看 shards 情况
+```shell
+GET /_cat/shards?v
+结果如下
+index     shard prirep state   docs  store ip         node
+.kibana_1 0     r      STARTED   18 53.3kb 172.20.0.2 es02
+.kibana_1 0     p      STARTED   18 46.7kb 172.20.0.3 es01
+books     0     p      STARTED    0   208b 172.20.0.2 es02
+books     0     r      STARTED    0   208b 172.20.0.4 es03
+```
+可以看到 `books` 索引的 Replica Shard 的状态已经是是 STARTED 。
 
 
 
