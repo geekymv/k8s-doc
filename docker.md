@@ -336,7 +336,7 @@ mysql>grant replication slave, replication client on *.* to repl@'%' identified 
 ```
 在mysql_master上执行
 ```shell
-mysql>show master status
+mysql>show master status\G;
 ```
 查询结果中的 File 和 Position 的值，后面的 slave 会用到
 
@@ -366,7 +366,7 @@ read_only=1
 ```
 连接到mysql_slave，执行
 ```shell
-mysql>change master to master_host='192.168.56.101', master_port=13306, master_user='repl', master_password='p4ssword', master_log_file='master-log-bin.000001', master_log_pos=157;
+mysql>change master to master_host='192.168.56.101', master_port=13306, master_user='repl', master_password='p4ssword', master_log_file='master-log-bin.000001', master_log_pos=0;
 mysql>start slave;
 mysql>show slave status\G;
 ```
