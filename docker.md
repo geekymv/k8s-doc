@@ -301,6 +301,75 @@ character_set_server=utf8mb4
 ```md
 docker restart mysql
 ```
+### MySQL主从复制
+#### master
+```shell
+docker run --name mysql_master \
+-e MYSQL_ROOT_PASSWORD=123456 \
+-v /usr/local/mysql_master/data:/var/lib/mysql \
+-v /usr/local/mysql_master/log:/var/log/mysql \
+-v /usr/local/mysql_master/conf:/etc/mysql/conf.d \
+-d -p 13306:3306 \
+mysql:5.7
+
+cd /usr/local/mysql_master/conf
+vi my.cnf
+[client]
+default_character_set=utf8mb4
+[mysql]
+default_character_set=utf8mb4
+[mysqld]
+collation_server=utf8mb4_general_ci
+character_set_server=utf8mb4
+
+server-id=10
+log-bin=master-log-bin
+binlog-ignore-db=mysql
+binlog_cache_size=1M
+binlog_format=mixed
+expire_logs_days=7
+```
+
+连接到mysql_master,创建一个用于主从复制的用户 `repl`
+```shell
+mysql>grant replication slave, replication client on *.* to repl@'%' identified by 'p4ssword';
+```
+在mysql_master上执行
+```shell
+mysql>show master status
+```
+查询结果中的 File 和 Position 的值，后面的 slave 会用到
+
+#### slave
+```md
+docker run --name mysql_slave \
+-e MYSQL_ROOT_PASSWORD=123456 \
+-v /usr/local/mysql_slave/data:/var/lib/mysql \
+-v /usr/local/mysql_slave/log:/var/log/mysql \
+-v /usr/local/mysql_slave/conf:/etc/mysql/conf.d \
+-d -p 23306:3306 \
+mysql:5.7
+
+cd /usr/local/mysql_slave/conf
+vi my.cnf
+[client]
+default_character_set=utf8mb4
+[mysql]
+default_character_set=utf8mb4
+[mysqld]
+collation_server=utf8mb4_general_ci
+character_set_server=utf8mb4
+
+server-id=11
+relay_log=relay-log-bin
+read_only=1
+```
+连接到mysql_slave，执行
+```shell
+mysql>change master to master_host='192.168.56.101', master_port=13306, master_user='repl', master_password='p4ssword', master_log_file='master-log-bin.000001', master_log_pos=157;
+mysql>start slave;
+mysql>show slave status\G;
+```
 
 
 
