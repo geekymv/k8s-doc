@@ -274,6 +274,34 @@ docker compose up -d
 sudo docker exec -it gitlab grep 'Password:' /etc/gitlab/initial_root_password
 
 ```
+### 安装MySQL
+```md
+docker run --name mysql \
+-e MYSQL_ROOT_PASSWORD=123456 \
+-v /usr/local/mysql/data:/var/lib/mysql \
+-v /usr/local/mysql/log:/var/log/mysql \
+-v /usr/local/mysql/conf:/etc/mysql/conf.d \
+-d -p 3306:3306 \
+mysql:5.7
+```
+增加配置文件
+```md
+cd /usr/local/mysql/conf
+vi my.cnf
+配置如下：
+[client]
+default_character_set=utf8mb4
+[mysql]
+default_character_set=utf8mb4
+[mysqld]
+collation_server=utf8mb4_general_ci
+character_set_server=utf8mb4
+```
+重启MySQL容器
+```md
+docker restart mysql
+```
+
 
 
 
