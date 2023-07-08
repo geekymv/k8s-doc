@@ -275,6 +275,10 @@ sudo docker exec -it gitlab grep 'Password:' /etc/gitlab/initial_root_password
 
 ```
 ### 安装MySQL
+```shell
+docker pull mysql:5.7
+```
+
 ```md
 docker run --name mysql \
 -e MYSQL_ROOT_PASSWORD=123456 \
@@ -370,6 +374,40 @@ mysql>change master to master_host='192.168.56.101', master_port=13306, master_u
 mysql>start slave;
 mysql>show slave status\G;
 ```
+
+### 安装Redis
+```shell
+docker pull redis:7.0
+```
+
+```shell
+mkdir -p /usr/local/redis
+cd /usr/local/redis
+vi redis.conf
+# 添加内容如下
+dir /data
+# RDB
+save 900 1
+save 300 10
+save 60 10000
+
+# AOF
+appendonly yes
+appendfsync everysec
+appendfilename "appendonly.aof"
+```
+
+```shell
+docker run --name redis \
+-v /usr/local/redis/redis.conf:/etc/redis/redis.conf \
+-v /usr/local/redis/data:/data \
+-d -p 6379:6379 \
+redis:4.0 \
+redis-server /etc/redis/redis.conf 
+```
+
+
+
 
 
 
